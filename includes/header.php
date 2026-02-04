@@ -309,6 +309,11 @@ $csrfToken = generateCsrfToken();
                     <i class="fas fa-tags w-5 text-center"></i>
                     <span>Kategori</span>
                 </a>
+                <a href="/gudang-gizi/modules/master/satuan.php"
+                    class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white <?= $currentModule === 'master' && $currentPage === 'satuan' ? 'active' : '' ?>">
+                    <i class="fas fa-ruler w-5 text-center"></i>
+                    <span>Satuan</span>
+                </a>
                 <a href="/gudang-gizi/modules/master/supplier.php"
                     class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white <?= $currentModule === 'master' && $currentPage === 'supplier' ? 'active' : '' ?>">
                     <i class="fas fa-truck w-5 text-center"></i>

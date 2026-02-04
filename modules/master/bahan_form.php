@@ -4,28 +4,52 @@
  * Gudang Gizi - Sistem Manajemen Stok
  */
 
-require_once __DIR__ . '/../../includes/header.php';
+// Start session and include only necessary files for processing BEFORE header
+session_start();
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/security.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user'])) {
+    header('Location: /gudang-gizi/modules/auth/login.php');
+    exit;
+}
+
+$currentUser = $_SESSION['user'];
 
 // Check permission
 if (!hasPermission(['owner', 'admin'])) {
-    redirectWith('/gudang-gizi/index.php', 'Anda tidak memiliki akses ke halaman ini', 'error');
+    $_SESSION['flash_message'] = 'Anda tidak memiliki akses ke halaman ini';
+    $_SESSION['flash_type'] = 'error';
+    header('Location: /gudang-gizi/index.php');
+    exit;
 }
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $isEdit = $id > 0;
 $item = null;
+$errors = [];
 
 if ($isEdit) {
     $item = fetchOne("SELECT * FROM bahan_makanan WHERE id = ?", [$id], 'i');
     if (!$item) {
-        redirectWith('/gudang-gizi/modules/master/bahan.php', 'Data tidak ditemukan', 'error');
+        $_SESSION['flash_message'] = 'Data tidak ditemukan';
+        $_SESSION['flash_type'] = 'error';
+        header('Location: /gudang-gizi/modules/master/bahan.php');
+        exit;
     }
 }
 
-// Handle form submission
+// Handle form submission BEFORE including header
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate CSRF token
-    verifyCsrf('/gudang-gizi/modules/master/bahan.php');
+    if (!validateCsrfToken()) {
+        $_SESSION['flash_message'] = 'Invalid security token. Please try again.';
+        $_SESSION['flash_type'] = 'error';
+        header('Location: /gudang-gizi/modules/master/bahan.php');
+        exit;
+    }
 
     $kode = sanitize($_POST['kode']);
     $nama = sanitize($_POST['nama']);
@@ -36,8 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lokasi_rak = sanitize($_POST['lokasi_rak']);
     $keterangan = sanitize($_POST['keterangan']);
     $is_active = isset($_POST['is_active']) ? 1 : 0;
-
-    $errors = [];
 
     // Validation
     if (empty($kode))
@@ -59,20 +81,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     keterangan = ?, is_active = ?
                     WHERE id = ?";
             $params = [$kode, $nama, $kategori_id, $satuan_id, $stok_minimum, $harga_satuan, $lokasi_rak, $keterangan, $is_active, $id];
-            $types = "ssiiiissii";
+            $types = "ssiidsssii";
 
             query($sql, $params, $types);
             logActivity($currentUser['id'], 'update_bahan', "Mengupdate bahan: $nama");
-            redirectWith('/gudang-gizi/modules/master/bahan.php', 'Bahan makanan berhasil diupdate', 'success');
+            
+            $_SESSION['flash_message'] = 'Bahan makanan berhasil diupdate';
+            $_SESSION['flash_type'] = 'success';
+            header('Location: /gudang-gizi/modules/master/bahan.php');
+            exit;
         } else {
             $sql = "INSERT INTO bahan_makanan (kode, nama, kategori_id, satuan_id, stok_minimum, harga_satuan, lokasi_rak, keterangan, is_active) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $params = [$kode, $nama, $kategori_id, $satuan_id, $stok_minimum, $harga_satuan, $lokasi_rak, $keterangan, $is_active];
-            $types = "ssiidissi";
+            $types = "ssiidsssi";
 
             $newId = insertGetId($sql, $params, $types);
             logActivity($currentUser['id'], 'create_bahan', "Menambah bahan baru: $nama");
-            redirectWith('/gudang-gizi/modules/master/bahan.php', 'Bahan makanan berhasil ditambahkan', 'success');
+            
+            $_SESSION['flash_message'] = 'Bahan makanan berhasil ditambahkan';
+            $_SESSION['flash_type'] = 'success';
+            header('Location: /gudang-gizi/modules/master/bahan.php');
+            exit;
         }
     }
 }
@@ -96,6 +126,9 @@ if (!$isEdit) {
         $suggestedCode = 'BHN001';
     }
 }
+
+// NOW include header (only for displaying the page)
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <script>setPageTitle('<?= $isEdit ? 'Edit' : 'Tambah' ?> Bahan Makanan', '<?= $isEdit ? 'Ubah data bahan makanan' : 'Tambah data bahan baru' ?>');</script>

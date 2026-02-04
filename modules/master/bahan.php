@@ -69,9 +69,74 @@ $items = empty($params) ? fetchAll($sql) : fetchAll($sql, $params, $types);
 
 // Get categories for filter
 $categories = fetchAll("SELECT * FROM kategori ORDER BY nama ASC");
+
+// Get stock statistics
+$stockStats = fetchOne("SELECT 
+    COUNT(*) as total_items,
+    SUM(CASE WHEN stok_saat_ini <= stok_minimum AND is_active = 1 THEN 1 ELSE 0 END) as low_stock_items,
+    SUM(CASE WHEN stok_saat_ini = 0 AND is_active = 1 THEN 1 ELSE 0 END) as out_of_stock_items,
+    SUM(stok_saat_ini * harga_satuan) as total_stock_value,
+    SUM(stok_saat_ini) as total_stock_qty
+    FROM bahan_makanan WHERE is_active = 1");
 ?>
 
 <script>setPageTitle('Bahan Makanan', 'Kelola data bahan makanan');</script>
+
+<!-- Stock Summary Cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <!-- Total Items -->
+    <div class="glass rounded-xl p-4 card-hover">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <i class="fas fa-boxes-stacked text-xl"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white"><?= number_format($stockStats['total_items'] ?? 0) ?></p>
+                <p class="text-xs text-gray-400">Total Bahan</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Stock Value -->
+    <div class="glass rounded-xl p-4 card-hover">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center">
+                <i class="fas fa-coins text-xl"></i>
+            </div>
+            <div>
+                <p class="text-lg font-bold text-white"><?= formatRupiah($stockStats['total_stock_value'] ?? 0) ?></p>
+                <p class="text-xs text-gray-400">Nilai Total Stok</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock -->
+    <div class="glass rounded-xl p-4 card-hover">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-yellow-500/20 text-yellow-400 flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-xl"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white"><?= number_format($stockStats['low_stock_items'] ?? 0) ?></p>
+                <p class="text-xs text-gray-400">Stok Rendah</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Out of Stock -->
+    <div class="glass rounded-xl p-4 card-hover">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
+                <i class="fas fa-times-circle text-xl"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white"><?= number_format($stockStats['out_of_stock_items'] ?? 0) ?>
+                </p>
+                <p class="text-xs text-gray-400">Stok Habis</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Header Actions -->
 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

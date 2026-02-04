@@ -5,7 +5,25 @@
  * With Nota/Receipt Upload Support
  */
 
-require_once __DIR__ . '/../../includes/header.php';
+// Start session and include necessary files BEFORE any output
+session_start();
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/security.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user'])) {
+    header('Location: /gudang-gizi/modules/auth/login.php');
+    exit;
+}
+
+$currentUser = $_SESSION['user'];
+
+// Create uploads directory if not exists
+$uploadDir = __DIR__ . '/../../uploads/nota/';
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
+}
 
 // Get suppliers and bahan for dropdowns
 $suppliers = fetchAll("SELECT * FROM supplier WHERE is_active = 1 ORDER BY nama ASC");
@@ -15,7 +33,7 @@ $bahanList = fetchAll("SELECT b.*, s.singkatan as satuan_singkatan
                        WHERE b.is_active = 1 
                        ORDER BY b.nama ASC");
 
-// Handle form submission
+// Handle form submission BEFORE including header
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
 
@@ -52,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Generate unique filename
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $filename = 'nota_' . date('Ymd_His') . '_' . uniqid() . '.' . $ext;
-                $upload_path = __DIR__ . '/../../uploads/nota/' . $filename;
+                $upload_path = $uploadDir . $filename;
 
                 if (move_uploaded_file($file['tmp_name'], $upload_path)) {
                     $nota_file = 'uploads/nota/' . $filename;
@@ -104,7 +122,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             logActivity($currentUser['id'], 'create_stok_masuk', "Menambah stok masuk: $no_transaksi");
-            redirectWith('/gudang-gizi/modules/stok_masuk/detail.php?id=' . $stok_masuk_id, 'Stok masuk berhasil disimpan', 'success');
+
+            // Redirect BEFORE any HTML output
+            $_SESSION['flash_message'] = 'Stok masuk berhasil disimpan';
+            $_SESSION['flash_type'] = 'success';
+            header('Location: /gudang-gizi/modules/stok_masuk/detail.php?id=' . $stok_masuk_id);
+            exit;
         } else {
             $errors[] = 'Gagal menyimpan transaksi';
         }
@@ -115,6 +138,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['flash_type'] = 'error';
     }
 }
+
+// NOW include header (only for displaying the page)
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <script>setPageTitle('Tambah Stok Masuk', 'Input penerimaan stok baru');</script>
